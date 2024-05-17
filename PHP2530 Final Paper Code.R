@@ -3,6 +3,8 @@ library("rstan")
 library(dplyr)
 library(bayesplot)
 library(pROC)
+library(ggplot2)
+library(reshape2)
 
 # Read in dataset
 survey <- read_excel("survey.xlsx")
@@ -111,6 +113,72 @@ rownames(df_present) <- c("marital.statusSingle", "health.facilities.in.your.are
 # kable output
 kable(df_present, caption = "Summary Statistics of r-hat values", booktabs=T) %>%
    kable_styling(latex_options = "HOLD_position")
+
+# True outcome distribution
+true_counts <- table(outcome)
+true_ratios <- prop.table(true_counts)
+
+# Predicted outcome distribution
+predicted_counts <- table(y_pred_binary)
+predicted_ratios <- prop.table(predicted_counts)
+
+
+# Combine true and predicted counts into a data frame
+distribution_df <- data.frame(
+  Outcome = c("True 0", "True 1", "Predicted 0", "Predicted 1"),
+  Count = c(true_counts[1], true_counts[2], predicted_counts[1], predicted_counts[2]),
+  Type = c("True", "True", "Predicted", "Predicted")
+)
+
+# Create the bar plot
+ggplot(distribution_df, aes(x = Outcome, y = Count, fill = Type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Distribution of True and Predicted Outcomes",
+       x = "Outcome",
+       y = "Count") +
+  theme_classic()
+
+# Melt the data to long format
+melted_data <- melt(survey, id.vars = "heard.about.cancer.of.cervix", 
+                    measure.vars = c("marital.status", "health.facilities.in.your.area", "smoking"),
+                    variable.name = "Variable", value.name = "Value")
+custom_labeller <- function(variable, value) {
+  gsub("\\.", " ", value)
+}
+
+
+# Create a named vector for custom facet titles
+facet_titles <- c(
+  "marital.status" = "Marital Status",
+  "health.facilities.in.your.area" = "Health Facilities in Your Area",
+  "smoking" = "Smoking Status"
+)
+
+# Create a faceted bar plot
+ggplot(melted_data, aes(x = Value, fill = as.factor(heard.about.cancer.of.cervix))) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ Variable, scales = "free_x",labeller = labeller(Variable = facet_titles)) +
+  labs(title = "Cervical Cancer Awareness by Different Factors",
+       x = "Category",
+       y = "Proportion",
+       fill = "Aware of Cervical Cancer") +
+theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text = element_text(size = 8))
+
+# Calculate the posterior means for each beta coefficient
+posterior_means <- colMeans(posterior_samples$beta)
+
+# Create a data frame for plotting
+posterior_means_df <- data.frame(beta_mean = posterior_means)
+
+# Plot the density plot of posterior means
+ggplot(posterior_means_df, aes(x = beta_mean)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Density Plot of Posterior Means for Beta Coefficients",
+       x = "Posterior Mean of Beta Coefficients",
+       y = "Density") +
+  theme_classic()
 
 
 
