@@ -87,7 +87,6 @@ beta_summary_df <- as.data.frame(t(beta_summary))
 
 # To identify the most significant predictors, sort by the absolute value of the mean
 beta_summary_df <- beta_summary_df[order(abs(beta_summary_df$mean), decreasing = TRUE), ]
-print(beta_summary_df)
 
 # Extract the column names from encoded_df
 column_names <- colnames(encoded_df)
